@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Ghost, LogOut, Settings, Shield, Users, Video, MessageCircle, Calendar } from 'lucide-react'
 
@@ -20,10 +20,22 @@ function Header({ anonId, isAuthenticated, onLogout }) {
     return location.pathname.startsWith(path)
   }
 
+  // Close dropdown when clicking outside
+  const userMenuRef = useRef(null)
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [userMenuRef])
+
   return (
-    <header className="navbar bg-base-200 shadow-lg border-b border-base-300">
+    <header className="navbar sticky top-0 z-50 bg-base-100/50 backdrop-blur-lg border-b border-base-300/10">
       <div className="navbar-start">
-        <Link to="/" className="btn btn-ghost text-xl font-bold text-primary">
+        <Link to="/" className="btn btn-ghost text-xl font-bold text-primary hover:bg-transparent">
           <Ghost className="w-6 h-6 mr-2" />
           GhostLink
         </Link>
@@ -51,7 +63,7 @@ function Header({ anonId, isAuthenticated, onLogout }) {
 
       <div className="navbar-end">
         {isAuthenticated ? (
-          <div className="dropdown dropdown-end">
+          <div className="dropdown dropdown-end" ref={userMenuRef}>
             <div
               tabIndex={0}
               role="button"
@@ -59,7 +71,7 @@ function Header({ anonId, isAuthenticated, onLogout }) {
               onClick={() => setShowUserMenu(!showUserMenu)}
             >
               <div className="bg-primary text-primary-content rounded-full w-10">
-                <span className="text-xs font-bold">
+                <span className="text-sm font-bold">
                   {anonId ? anonId.slice(0, 2).toUpperCase() : 'AN'}
                 </span>
               </div>
@@ -68,7 +80,7 @@ function Header({ anonId, isAuthenticated, onLogout }) {
             {showUserMenu && (
               <ul
                 tabIndex={0}
-                className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-200 rounded-box w-64"
+                className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-2xl bg-base-200 rounded-box w-64 border border-base-300/20"
               >
                 <li className="menu-title">
                   <span className="flex items-center">
@@ -79,7 +91,7 @@ function Header({ anonId, isAuthenticated, onLogout }) {
                 <li>
                   <div className="flex flex-col items-start p-2">
                     <span className="font-mono text-sm text-primary font-bold">
-                      {anonId}
+                      ID: {anonId}
                     </span>
                     <span className="text-xs text-base-content/60">
                       Session expires in 1h
@@ -87,13 +99,13 @@ function Header({ anonId, isAuthenticated, onLogout }) {
                   </div>
                 </li>
                 <div className="divider my-1"></div>
-                <li>
+                <li className="disabled">
                   <button className="flex items-center">
                     <Settings className="w-4 h-4 mr-2" />
                     Settings
                   </button>
                 </li>
-                <li>
+                <li onClick={() => setShowUserMenu(false)}>
                   <button 
                     onClick={onLogout}
                     className="flex items-center text-error hover:bg-error/10"
@@ -107,7 +119,7 @@ function Header({ anonId, isAuthenticated, onLogout }) {
           </div>
         ) : (
           <div className="flex items-center space-x-2">
-            <div className="badge badge-outline badge-sm">
+            <div className="badge badge-ghost badge-sm">
               Anonymous
             </div>
           </div>
@@ -160,4 +172,3 @@ function Header({ anonId, isAuthenticated, onLogout }) {
 }
 
 export default Header
-

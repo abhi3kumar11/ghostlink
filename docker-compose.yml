@@ -13,7 +13,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - CORS_ORIGIN=*
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:8080}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
       - ANON_SALT=${ANON_SALT:-}
     volumes:
@@ -154,6 +154,20 @@ services:
     depends_on:
       - loki
     command: -config.file=/etc/promtail/config.yml
+
+  # TURN/STUN server for WebRTC
+  coturn:
+    image: coturn/coturn
+    container_name: ghostlink-coturn
+    restart: unless-stopped
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+    volumes:
+      - ./coturn.conf:/etc/coturn/turnserver.conf:ro
+    networks:
+      - ghostlink-network
+    command: -c /etc/coturn/turnserver.conf
 
 networks:
   ghostlink-network:

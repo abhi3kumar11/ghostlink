@@ -16,6 +16,14 @@ NC='\033[0m' # No Color
 PROJECT_NAME="ghostlink"
 DOCKER_COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env"
+JWT_SECRET_PLACEHOLDER="ghostlink_jwt_secret_placeholder"
+
+# Detect Docker Compose command
+if command -v docker-compose &> /dev/null; then
+    COMPOSE_CMD="docker-compose"
+else
+    COMPOSE_CMD="docker compose"
+fi
 
 # Functions
 log_info() {
@@ -43,8 +51,9 @@ check_prerequisites() {
         exit 1
     fi
     
-    if ! command -v docker-compose &> /dev/null; then
-        log_error "Docker Compose is not installed. Please install Docker Compose first."
+    # Check for docker-compose (v1) or docker compose (v2)
+    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+        log_error "Docker Compose is not installed. Please install it first."
         exit 1
     fi
     
@@ -60,11 +69,12 @@ generate_env() {
 # GhostLink Environment Configuration
 NODE_ENV=production
 PORT=3000
-CORS_ORIGIN=*
+CORS_ORIGIN=http://localhost:8080
 
 # Security Keys (Auto-generated)
 ENCRYPTION_KEY=$(openssl rand -hex 32)
 ANON_SALT=$(openssl rand -hex 16)
+JWT_SECRET=${JWT_SECRET_PLACEHOLDER}
 
 # Database Configuration
 REDIS_URL=redis://redis:6379
@@ -87,6 +97,11 @@ DATA_RETENTION_MEETINGS=14400000
 DATA_RETENTION_SESSIONS=86400000
 EOF
         log_success "Environment file created: $ENV_FILE"
+
+        # Replace JWT secret placeholder with a real secret
+        NEW_JWT_SECRET=$(openssl rand -hex 64)
+        sed -i "s/${JWT_SECRET_PLACEHOLDER}/${NEW_JWT_SECRET}/" "$ENV_FILE"
+        log_info "Generated and set a secure JWT_SECRET."
     else
         log_warning "Environment file already exists: $ENV_FILE"
     fi
@@ -98,21 +113,39 @@ deploy() {
     
     # Stop existing containers
     log_info "Stopping existing containers..."
-    docker-compose -f "$DOCKER_COMPOSE_FILE" down --remove-orphans || true
+    $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" down --remove-orphans || true
     
     # Build images
     log_info "Building Docker images..."
-    docker-compose -f "$DOCKER_COMPOSE_FILE" build --no-cache
+    $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" build --no-cache
     
     # Start services
     log_info "Starting services..."
-    docker-compose -f "$DOCKER_COMPOSE_FILE" up -d
+    $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" up -d
     
-    # Wait for services to be ready
-    log_info "Waiting for services to be ready..."
-    sleep 30
+    # Wait for services to become healthy
+    log_info "Waiting for services to become healthy..."
+    TIMEOUT=180 # 3 minutes
+    INTERVAL=5
+    ELAPSED=0
+
+    while [ $ELAPSED -lt $TIMEOUT ]; do
+        if $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" ps | grep 'ghostlink-backend' | grep -q '(healthy)'; then
+            log_success "Backend is healthy."
+            break
+        fi
+        sleep $INTERVAL
+        ELAPSED=$((ELAPSED + INTERVAL))
+        log_info "Waiting... (${ELAPSED}s / ${TIMEOUT}s)"
+    done
+
+    if [ $ELAPSED -ge $TIMEOUT ]; then
+        log_error "Timeout waiting for backend to become healthy."
+        $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" logs ghostlink-backend
+        exit 1
+    fi
     
-    # Health checks
+    # Final health checks
     check_health
     
     log_success "GhostLink deployment completed successfully!"
@@ -123,16 +156,16 @@ deploy() {
 check_health() {
     log_info "Performing health checks..."
     
-    # Check backend health
-    if curl -f http://localhost:8080/api/health > /dev/null 2>&1; then
+    # Check backend health via proxy
+    if curl -f --silent --output /dev/null http://localhost:8080/api/health; then
         log_success "Backend service is healthy"
     else
         log_error "Backend service health check failed"
         return 1
     fi
     
-    # Check frontend health
-    if curl -f http://localhost:8080/health > /dev/null 2>&1; then
+    # Check frontend health via proxy
+    if curl -f --silent --output /dev/null http://localhost:8080/health; then
         log_success "Frontend service is healthy"
     else
         log_error "Frontend service health check failed"
@@ -140,13 +173,13 @@ check_health() {
     fi
     
     # Check monitoring services
-    if curl -f http://localhost:9090/-/healthy > /dev/null 2>&1; then
+    if curl -f --silent --output /dev/null http://localhost:9090/-/healthy; then
         log_success "Prometheus is healthy"
     else
         log_warning "Prometheus health check failed"
     fi
     
-    if curl -f http://localhost:3001/api/health > /dev/null 2>&1; then
+    if curl -f --silent --output /dev/null http://localhost:3001/api/health; then
         log_success "Grafana is healthy"
     else
         log_warning "Grafana health check failed"
@@ -166,10 +199,10 @@ show_access_info() {
     echo "   Grafana: http://localhost:3001 (admin/$(grep GRAFANA_ADMIN_PASSWORD .env | cut -d'=' -f2))"
     echo "   Prometheus: http://localhost:9090"
     echo ""
-    echo "🔧 Management Commands:"
-    echo "   View logs: docker-compose logs -f"
-    echo "   Stop services: docker-compose down"
-    echo "   Restart services: docker-compose restart"
+    echo "🔧 Management Commands (using '$COMPOSE_CMD'):"
+    echo "   View logs: $COMPOSE_CMD logs -f"
+    echo "   Stop services: $COMPOSE_CMD down"
+    echo "   Restart services: $COMPOSE_CMD restart"
     echo "   Update services: ./deploy.sh update"
     echo ""
 }
@@ -179,10 +212,10 @@ update() {
     log_info "Updating GhostLink deployment..."
     
     # Pull latest images
-    docker-compose -f "$DOCKER_COMPOSE_FILE" pull
+    $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" pull
     
     # Rebuild and restart
-    docker-compose -f "$DOCKER_COMPOSE_FILE" up -d --build
+    $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" up -d --build
     
     log_success "GhostLink updated successfully!"
 }
@@ -212,7 +245,7 @@ cleanup() {
     log_info "Cleaning up GhostLink deployment..."
     
     # Stop and remove containers
-    docker-compose -f "$DOCKER_COMPOSE_FILE" down --volumes --remove-orphans
+    $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" down --volumes --remove-orphans
     
     # Remove images
     docker images | grep ghostlink | awk '{print $3}' | xargs docker rmi -f || true
@@ -225,13 +258,13 @@ cleanup() {
 
 # Show logs
 logs() {
-    docker-compose -f "$DOCKER_COMPOSE_FILE" logs -f "${2:-}"
+    $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" logs -f "${2:-}"
 }
 
 # Show status
 status() {
     log_info "GhostLink Service Status:"
-    docker-compose -f "$DOCKER_COMPOSE_FILE" ps
+    $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" ps
     
     echo ""
     log_info "Resource Usage:"

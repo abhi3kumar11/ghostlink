@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import './App.css'
 
 // Components
@@ -9,77 +9,15 @@ import VideoRoom from './components/VideoRoom'
 import MeetingHub from './components/MeetingHub'
 import Header from './components/Header'
 
-// Services
-import { authService } from './services/authService'
-import { socketService } from './services/socketService'
+// State Management
+import { useAuthStore } from './stores/authStore'
 
 function App() {
-  const [anonId, setAnonId] = useState(null)
-  const [tempToken, setTempToken] = useState(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const { anonId, isAuthenticated, isLoading, initializeAuth, logout } = useAuthStore()
 
   useEffect(() => {
-    // Check for existing authentication
-    const storedToken = localStorage.getItem('ghostlink_token')
-    const storedAnonId = localStorage.getItem('ghostlink_anon_id')
-    
-    if (storedToken && storedAnonId) {
-      authService.verifyToken(storedToken)
-        .then(response => {
-          if (response.valid) {
-            setTempToken(storedToken)
-            setAnonId(storedAnonId)
-            setIsAuthenticated(true)
-            
-            // Initialize socket connection
-            socketService.connect()
-            socketService.authenticate(storedToken)
-          } else {
-            // Token expired, clear storage
-            localStorage.removeItem('ghostlink_token')
-            localStorage.removeItem('ghostlink_anon_id')
-          }
-        })
-        .catch(error => {
-          console.error('Token verification failed:', error)
-          localStorage.removeItem('ghostlink_token')
-          localStorage.removeItem('ghostlink_anon_id')
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
-    } else {
-      setIsLoading(false)
-    }
+    initializeAuth()
   }, [])
-
-  const handleAuthentication = (newAnonId, newToken) => {
-    setAnonId(newAnonId)
-    setTempToken(newToken)
-    setIsAuthenticated(true)
-    
-    // Store in localStorage
-    localStorage.setItem('ghostlink_token', newToken)
-    localStorage.setItem('ghostlink_anon_id', newAnonId)
-    
-    // Initialize socket connection
-    socketService.connect()
-    socketService.authenticate(newToken)
-  }
-
-  const handleLogout = () => {
-    setAnonId(null)
-    setTempToken(null)
-    setIsAuthenticated(false)
-    
-    // Clear storage
-    localStorage.removeItem('ghostlink_token')
-    localStorage.removeItem('ghostlink_anon_id')
-    
-    // Disconnect socket
-    socketService.disconnect()
-  }
 
   if (isLoading) {
     return (
@@ -98,10 +36,10 @@ function App() {
         <Header 
           anonId={anonId} 
           isAuthenticated={isAuthenticated}
-          onLogout={handleLogout}
+          onLogout={logout}
         />
         
-        <main className="container mx-auto px-4 py-8">
+        <main className="px-4 py-8">
           <Routes>
             <Route 
               path="/" 
@@ -109,8 +47,8 @@ function App() {
                 isAuthenticated ? (
                   <Lobby anonId={anonId} />
                 ) : (
-                  <div className="max-w-md mx-auto">
-                    <div className="card bg-base-200 shadow-xl">
+                  <div className="max-w-md mx-auto mt-20">
+                    <div className="card bg-base-200/50 shadow-2xl shadow-primary/10 border border-primary/20 animate-pulse-glow">
                       <div className="card-body text-center">
                         <h2 className="card-title justify-center text-2xl mb-4">
                           Welcome to GhostLink
@@ -118,7 +56,7 @@ function App() {
                         <p className="text-base-content/70 mb-6">
                           Anonymous communication platform for secure, ephemeral conversations
                         </p>
-                        <AuthenticationForm onAuthenticate={handleAuthentication} />
+                        <AuthenticationForm />
                       </div>
                     </div>
                   </div>
@@ -168,17 +106,16 @@ function App() {
 }
 
 // Authentication Form Component
-function AuthenticationForm({ onAuthenticate }) {
+function AuthenticationForm() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState(null)
+  const { login } = useAuthStore()
 
   const generateAnonId = async () => {
     setIsGenerating(true)
     setError(null)
-    
     try {
-      const response = await authService.generateAnonId()
-      onAuthenticate(response.anonId, response.tempToken)
+      await login()
     } catch (error) {
       console.error('Authentication failed:', error)
       setError('Failed to generate anonymous ID. Please try again.')

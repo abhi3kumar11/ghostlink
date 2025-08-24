@@ -67,9 +67,8 @@ GhostLink is a secure, anonymous communication platform that enables ephemeral c
    ```
 
 2. **Access the Application**
-   - Frontend: http://localhost:80
-   - Frontend: http://localhost:8080
-   - Backend API (via proxy): http://localhost:8080/api
+   - **Frontend**: http://localhost:8080
+   - **Backend API (via proxy)**: http://localhost:8080/api
    - Monitoring: http://localhost:3001 (Grafana)
 
 ### Development Setup
@@ -77,8 +76,8 @@ GhostLink is a secure, anonymous communication platform that enables ephemeral c
 1. **Backend Development**
    ```bash
    cd ghostlink-backend
-   npm install
-   npm run dev
+   pnpm install
+   pnpm run dev
    ```
 
 2. **Frontend Development**
@@ -183,7 +182,7 @@ RATE_LIMIT_MAX_REQUESTS=100       # Max requests per window
 ### Authentication
 ```javascript
 // Anonymous authentication
-POST /api/auth/anonymous
+POST /api/auth/generate-anon-id
 Response: { anonId: "ANON_ABC123", tempToken: "..." }
 ```
 
@@ -235,11 +234,10 @@ npm run test:integration
 
 ### Load Testing
 ```bash
-# Install artillery
-npm install -g artillery
-
-# Run load tests
-artillery run tests/load-test.yml
+cd tests
+npm install
+# Run realistic load test
+node realistic-test.js
 ```
 
 ## 🤝 Contributing

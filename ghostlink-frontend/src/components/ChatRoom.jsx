@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { Send, Plus, Users, Clock, Shield, Copy, Check, AlertCircle } from 'lucide-react'
 import { socketService } from '../services/socketService'
 
@@ -237,7 +238,12 @@ function ChatRoom({ anonId }) {
 
   return (
     <div className="max-w-4xl mx-auto h-[calc(100vh-12rem)]">
-      <div className="card bg-base-200 shadow-xl h-full flex flex-col">
+      <Helmet>
+        <title>{`Chat Room: ${currentRoom === 'global' ? 'Global' : currentRoom} - GhostLink`}</title>
+        <meta name="description" content={`Join an anonymous and ephemeral text chat on GhostLink. Room: ${currentRoom}.`} />
+      </Helmet>
+
+      <div className="card bg-base-200/50 backdrop-blur-sm shadow-xl h-full flex flex-col border border-base-300/10">
         {/* Chat Header */}
         <div className="card-body pb-4">
           <div className="flex items-center justify-between">
@@ -275,7 +281,7 @@ function ChatRoom({ anonId }) {
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto px-6 space-y-3">
+        <div className="flex-1 overflow-y-auto px-6 space-y-3 bg-base-100/30 rounded-lg m-4 p-4">
           {messages.length === 0 ? (
             <div className="text-center text-base-content/50 py-8">
               <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -324,11 +330,11 @@ function ChatRoom({ anonId }) {
                 </div>
                 
                 <div className={`chat-bubble ${
-                  message.type === 'system' 
-                    ? 'chat-bubble-info' 
-                    : message.anonId === anonId 
-                      ? 'chat-bubble-primary' 
-                      : 'chat-bubble-secondary'
+                  message.type === 'system'
+                    ? 'chat-bubble-info text-xs'
+                    : message.anonId === anonId
+                      ? 'chat-bubble-primary rounded-br-none'
+                      : 'chat-bubble-secondary rounded-bl-none'
                 }`}>
                   {message.text}
                 </div>
@@ -472,4 +478,3 @@ function ChatRoom({ anonId }) {
 }
 
 export default ChatRoom
-

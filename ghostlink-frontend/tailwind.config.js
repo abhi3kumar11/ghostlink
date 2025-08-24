@@ -5,6 +5,9 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    fontFamily: {
+      sans: ['Inter', 'sans-serif'],
+    },
     extend: {
       colors: {
         'anon-purple': '#6e2de5',
@@ -19,7 +22,8 @@ export default {
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
         'slide-up': 'slideUp 0.3s ease-out',
-        'pulse-glow': 'pulseGlow 2s infinite',
+        'pulse-glow': 'pulseGlow 2.5s infinite ease-in-out',
+        'gradient-pan': 'gradientPan 10s ease infinite',
       },
       keyframes: {
         fadeIn: {
@@ -31,8 +35,13 @@ export default {
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         pulseGlow: {
-          '0%, 100%': { boxShadow: '0 0 5px rgba(110, 45, 229, 0.5)' },
-          '50%': { boxShadow: '0 0 20px rgba(110, 45, 229, 0.8)' },
+          '0%, 100%': { boxShadow: '0 0 15px rgba(124, 58, 237, 0.4)' },
+          '50%': { boxShadow: '0 0 30px rgba(124, 58, 237, 0.8)' },
+        },
+        gradientPan: {
+          '0%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+          '100%': { backgroundPosition: '0% 50%' },
         },
       },
     },
@@ -44,12 +53,12 @@ export default {
     themes: [
       {
         ghostlink: {
-          "primary": "#6e2de5",
-          "secondary": "#ff3a30", 
-          "accent": "#0f3460",
-          "neutral": "#1a1a2e",
-          "base-100": "#16213e",
-          "base-200": "#1a1a2e",
+          "primary": "#7c3aed", // A more vibrant purple
+          "secondary": "#ec4899", // A modern pink/magenta
+          "accent": "#10b981", // A fresh teal/green
+          "neutral": "#1f2937",
+          "base-100": "#0f172a", // A deep, modern navy
+          "base-200": "#1e293b",
           "base-300": "#0f1419",
           "info": "#3abff8",
           "success": "#36d399",
@@ -69,4 +78,3 @@ export default {
     themeRoot: ":root",
   },
 }
-

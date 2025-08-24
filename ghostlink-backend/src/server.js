@@ -22,7 +22,7 @@ const server = http.createServer(app);
 // Configure Socket.IO with CORS for cross-platform compatibility
 const io = socketIo(server, {
   cors: {
-    origin: "*", // Allow all origins for maximum compatibility
+    origin: process.env.CORS_ORIGIN || "http://localhost:8080",
     methods: ["GET", "POST"],
     credentials: true
   },
@@ -38,7 +38,7 @@ app.use(helmet({
 
 // CORS configuration for cross-platform support
 app.use(cors({
-  origin: "*",
+  origin: process.env.CORS_ORIGIN || "http://localhost:8080",
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -493,4 +493,3 @@ server.listen(PORT, '0.0.0.0', () => {
 });
 
 module.exports = { app, server, io };
-

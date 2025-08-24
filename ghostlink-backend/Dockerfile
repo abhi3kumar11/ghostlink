@@ -28,20 +28,12 @@ RUN apk update && apk upgrade && \
 # Set working directory
 WORKDIR /app
 
-# Copy built application from builder stage
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/package*.json ./
-
-# Create logs directory
-RUN mkdir -p /app/logs
-
-# Copy non-root user from builder
+# Copy non-root user from builder first
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
-# Set ownership
-RUN chown -R ghostlink:nodejs /app
+# Copy application files from builder and set ownership
+COPY --from=builder --chown=ghostlink:nodejs /app /app
 
 # Switch to non-root user
 USER ghostlink
@@ -59,4 +51,3 @@ ENV PORT=3000
 
 # Start the application
 CMD ["node", "src/server.js"]
-

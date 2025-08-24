@@ -2,8 +2,12 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 
-// Secret key for JWT (in production, use environment variable)
 const JWT_SECRET = process.env.JWT_SECRET || 'ghostlink-super-secret-key-change-in-production';
+
+if (JWT_SECRET === 'ghostlink-super-secret-key-change-in-production' && process.env.NODE_ENV === 'production') {
+  console.error('FATAL ERROR: JWT_SECRET is not set. Please set a secure secret in your .env file.');
+  process.exit(1);
+}
 
 class AuthService {
   /**
@@ -159,4 +163,3 @@ class AuthService {
 }
 
 module.exports = new AuthService();
-
