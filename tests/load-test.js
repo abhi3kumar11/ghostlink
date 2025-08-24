@@ -107,18 +107,18 @@ class LoadTester {
         const message = `Test message from user ${userId} at ${Date.now()}`;
         const startTime = Date.now();
         
-        socket.emit('send_message', {
+        socket.emit('anon_msg', {
           text: message,
           roomId: roomId
         });
 
         // Track message metrics
-        socket.once('message_sent', () => {
+        socket.once('msg_sent', () => {
           const responseTime = Date.now() - startTime;
           this.updateMetrics('message', true, responseTime);
         });
 
-        socket.once('message_error', () => {
+        socket.once('msg_error', () => {
           this.updateMetrics('message', false, Date.now() - startTime);
         });
 

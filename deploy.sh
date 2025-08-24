@@ -240,6 +240,38 @@ backup() {
     log_success "Backup created: $BACKUP_DIR"
 }
 
+# Restore data
+restore() {
+    log_info "Restoring from backup..."
+    
+    BACKUP_DIR="$2"
+    if [ -z "$BACKUP_DIR" ] || [ ! -d "$BACKUP_DIR" ]; then
+        log_error "Backup directory not provided or does not exist. Usage: ./deploy.sh restore <backup-directory>"
+        exit 1
+    fi
+
+    log_warning "This will overwrite existing data. Are you sure you want to continue? (y/N)"
+    read -r response
+    if [[ ! "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        log_info "Restore operation cancelled."
+        exit 0
+    fi
+
+    log_info "Stopping services before restore..."
+    $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" down
+
+    log_info "Restoring volumes..."
+    docker run --rm -v ghostlink_redis-data:/data -v $(pwd)/$BACKUP_DIR:/backup alpine sh -c "rm -rf /data/* && tar xzf /backup/redis-data.tar.gz -C /data"
+    docker run --rm -v ghostlink_grafana-data:/data -v $(pwd)/$BACKUP_DIR:/backup alpine sh -c "rm -rf /data/* && tar xzf /backup/grafana-data.tar.gz -C /data"
+    docker run --rm -v ghostlink_prometheus-data:/data -v $(pwd)/$BACKUP_DIR:/backup alpine sh -c "rm -rf /data/* && tar xzf /backup/prometheus-data.tar.gz -C /data"
+
+    log_info "Restoring configuration from $BACKUP_DIR..."
+    cp "$BACKUP_DIR/.env" .
+
+    log_success "Restore completed. Restarting services..."
+    $COMPOSE_CMD -f "$DOCKER_COMPOSE_FILE" up -d
+}
+
 # Cleanup
 cleanup() {
     log_info "Cleaning up GhostLink deployment..."
@@ -284,6 +316,9 @@ case "${1:-deploy}" in
     "backup")
         backup
         ;;
+    "restore")
+        restore "$@"
+        ;;
     "cleanup")
         cleanup
         ;;
@@ -303,6 +338,7 @@ case "${1:-deploy}" in
         echo "  deploy  - Deploy GhostLink platform"
         echo "  update  - Update existing deployment"
         echo "  backup  - Create backup of data and configuration"
+        echo "  restore <dir> - Restore from a backup directory"
         echo "  cleanup - Remove all containers and images"
         echo "  logs    - Show service logs"
         echo "  status  - Show service status"

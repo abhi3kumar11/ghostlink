@@ -53,18 +53,28 @@ class RealisticTester {
   createSocketConnection(user) {
     return new Promise((resolve, reject) => {
       const socket = io(CONFIG.socketURL, {
-        transports: ['websocket', 'polling']
+        transports: ['websocket', 'polling'],
+        forceNew: true
       });
 
       socket.on('connect', () => {
-        resolve(socket);
+        // Authenticate the connection
+        socket.emit('auth', { tempToken: user.tempToken });
+
+        socket.on('auth_success', () => {
+          resolve(socket);
+        });
+
+        socket.on('auth_error', (error) => {
+          this.metrics.connectionErrors++;
+          reject(new Error(`Authentication failed: ${error.message}`));
+        });
       });
 
       socket.on('connect_error', (error) => {
         this.metrics.connectionErrors++;
         reject(new Error(`Connection failed: ${error.message}`));
       });
-
       setTimeout(() => {
         if (!socket.connected) {
           reject(new Error('Connection timeout'));
@@ -100,7 +110,7 @@ class RealisticTester {
         const message = `Hello from ${user.anonId} at ${new Date().toLocaleTimeString()}`;
         const startTime = Date.now();
         
-        socket.emit('send_message', {
+        socket.emit('anon_msg', {
           text: message,
           roomId: roomId
         });
@@ -108,12 +118,12 @@ class RealisticTester {
         this.metrics.totalMessages++;
         
         // Listen for confirmation from the server
-        socket.once('message_sent', () => {
+        socket.once('msg_sent', () => {
           const responseTime = Date.now() - startTime;
           this.updateMetrics('message', true, responseTime);
         });
 
-        socket.once('message_error', () => {
+        socket.once('msg_error', () => {
           this.updateMetrics('message', false, Date.now() - startTime);
         });
 

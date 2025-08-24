@@ -14,10 +14,12 @@ function ChatRoom({ anonId }) {
   const [participants, setParticipants] = useState(new Set())
   const [showRoomModal, setShowRoomModal] = useState(false)
   const [roomPasscode, setRoomPasscode] = useState('')
+  const [joinPasscode, setJoinPasscode] = useState('')
   const [joinRoomId, setJoinRoomId] = useState('')
   const [isCreatingRoom, setIsCreatingRoom] = useState(false)
   const [isJoiningRoom, setIsJoiningRoom] = useState(false)
   const [error, setError] = useState(null)
+  const [activeTab, setActiveTab] = useState('create')
   const [copiedPasscode, setCopiedPasscode] = useState(false)
   const messagesEndRef = useRef(null)
   const messageInputRef = useRef(null)
@@ -179,7 +181,7 @@ function ChatRoom({ anonId }) {
   }
 
   const joinBurnerRoom = async () => {
-    if (!joinRoomId.trim() || !roomPasscode.trim()) {
+    if (!joinRoomId.trim() || !joinPasscode.trim()) {
       setError('Please enter both room ID and passcode')
       return
     }
@@ -195,7 +197,7 @@ function ChatRoom({ anonId }) {
         },
         body: JSON.stringify({
           roomId: joinRoomId.trim(),
-          passcode: roomPasscode.trim(),
+          passcode: joinPasscode.trim(),
           anonId,
         }),
       })
@@ -207,7 +209,7 @@ function ChatRoom({ anonId }) {
         navigate(`/chat/${joinRoomId.trim()}`)
         setShowRoomModal(false)
         socketService.joinRoom(joinRoomId.trim())
-        setJoinRoomId('')
+        setJoinRoomId('');
         setRoomPasscode('')
       } else {
         setError(data.message || 'Failed to join room')
@@ -380,57 +382,58 @@ function ChatRoom({ anonId }) {
             <h3 className="font-bold text-lg mb-4">Burner Chat Rooms</h3>
             
             <div className="tabs tabs-boxed mb-4">
-              <a className="tab tab-active">Create Room</a>
-              <a className="tab">Join Room</a>
+              <a className={`tab ${activeTab === 'create' ? 'tab-active' : ''}`} onClick={() => setActiveTab('create')}>Create Room</a>
+              <a className={`tab ${activeTab === 'join' ? 'tab-active' : ''}`} onClick={() => setActiveTab('join')}>Join Room</a>
             </div>
 
-            {/* Create Room Tab */}
-            <div className="space-y-4">
-              <div className="alert alert-info">
-                <Shield className="w-4 h-4" />
-                <span>Burner rooms auto-delete after 24 hours</span>
-              </div>
-              
-              <button
-                onClick={createBurnerRoom}
-                disabled={isCreatingRoom}
-                className="btn btn-primary w-full"
-              >
-                {isCreatingRoom ? (
-                  <>
-                    <span className="loading loading-spinner loading-sm"></span>
-                    Creating...
-                  </>
-                ) : (
-                  'Create Burner Room'
-                )}
-              </button>
-
-              {roomPasscode && (
-                <div className="alert alert-success">
-                  <div className="flex items-center justify-between w-full">
-                    <div>
-                      <p className="font-semibold">Room Created!</p>
-                      <p className="text-sm">Passcode: <code>{roomPasscode}</code></p>
-                    </div>
-                    <button
-                      onClick={copyPasscode}
-                      className="btn btn-ghost btn-sm"
-                    >
-                      {copiedPasscode ? (
-                        <Check className="w-4 h-4 text-success" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
+            {activeTab === 'create' && (
+              <div className="space-y-4">
+                <div className="alert alert-info">
+                  <Shield className="w-4 h-4" />
+                  <span>Burner rooms auto-delete after 24 hours</span>
                 </div>
-              )}
+                
+                <button
+                  onClick={createBurnerRoom}
+                  disabled={isCreatingRoom}
+                  className="btn btn-primary w-full"
+                >
+                  {isCreatingRoom ? (
+                    <>
+                      <span className="loading loading-spinner loading-sm"></span>
+                      Creating...
+                    </>
+                  ) : (
+                    'Create New Burner Room'
+                  )}
+                </button>
 
-              <div className="divider">OR</div>
+                {roomPasscode && (
+                  <div className="alert alert-success">
+                    <div className="flex items-center justify-between w-full">
+                      <div>
+                        <p className="font-semibold">Room Created!</p>
+                        <p className="text-sm">Passcode: <code>{roomPasscode}</code></p>
+                      </div>
+                      <button
+                        onClick={copyPasscode}
+                        className="btn btn-ghost btn-sm"
+                      >
+                        {copiedPasscode ? (
+                          <Check className="w-4 h-4 text-success" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
-              {/* Join Room Section */}
+            {activeTab === 'join' && (
               <div className="space-y-3">
+                <p className="text-sm text-base-content/70">Enter the ID and passcode of the room you want to join.</p>
                 <input
                   type="text"
                   placeholder="Room ID"
@@ -442,12 +445,12 @@ function ChatRoom({ anonId }) {
                   type="text"
                   placeholder="Passcode"
                   className="input input-bordered w-full"
-                  value={roomPasscode}
-                  onChange={(e) => setRoomPasscode(e.target.value)}
+                  value={joinPasscode}
+                  onChange={(e) => setJoinPasscode(e.target.value)}
                 />
                 <button
                   onClick={joinBurnerRoom}
-                  disabled={isJoiningRoom || !joinRoomId.trim() || !roomPasscode.trim()}
+                  disabled={isJoiningRoom || !joinRoomId.trim() || !joinPasscode.trim()}
                   className="btn btn-secondary w-full"
                 >
                   {isJoiningRoom ? (
@@ -460,7 +463,7 @@ function ChatRoom({ anonId }) {
                   )}
                 </button>
               </div>
-            </div>
+            )}
 
             <div className="modal-action">
               <button

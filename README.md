@@ -223,7 +223,7 @@ Socket: 'webrtc_offer' | 'webrtc_answer' | 'webrtc_ice_candidate'
 ### Unit Tests
 ```bash
 cd ghostlink-backend
-npm test
+pnpm test
 ```
 
 ### Integration Tests
